@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reader with Pagination</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            max-width: 700px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Form Styles */
+        form {
+            margin-bottom: 30px;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            display: none; /* Hide initially */
+        }
+        th, td {
+            text-align: left;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        td {
+            font-size: 14px;
+            color: #555;
+        }
+
+        /* Pagination Styles */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .pagination button:hover {
+            background-color: #0056b3;
+        }
+        .pagination button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Error Message */
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>API Reader with Pagination</h1>
+
+        <form id="apiForm">
+            <label for="api_url">Enter API URL</label>
+            <input type="text" id="api_url" placeholder="https://api.example.com/data" required>
+            <button type="submit">Fetch API Data</button>
+        </form>
+
+        <div id="error" class="error"></div>
+
+        <table id="apiTable">
+            <thead>
+                <tr id="tableHeader"></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+
+        <!-- Pagination Controls -->
+        <div class="pagination" id="pagination" style="display: none;">
+            <button id="prevPage" disabled>Previous</button>
+            <button id="nextPage" disabled>Next</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('apiForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const apiUrl = document.getElementById('api_url').value;
+            const errorDiv = document.getElementById('error');
+            const table = document.getElementById('apiTable');
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            const pagination = document.getElementById('pagination');
+            const prevPageBtn = document.getElementById('prevPage');
+            const nextPageBtn = document.getElementById('nextPage');
+
+            let currentPage = 1;
+            const rowsPerPage = 5; // Number of rows per page
+            let totalRows;
+
+            // Clear previous data
+            errorDiv.innerHTML = '';
+            table.style.display = 'none';
+            tableHeader.innerHTML = '';
+            tableBody.innerHTML = '';
+            pagination.style.display = 'none';
+            prevPageBtn.disabled = true;
+            nextPageBtn.disabled = true;
+
+            // Fetch API data
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error fetching the API');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        totalRows = data.length;
+
+                        // Create table header based on keys
+                        const keys = Object.keys(data[0]);
+                        keys.forEach(key => {
+                            const th = document.createElement('th');
+                            th.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+                            tableHeader.appendChild(th);
+                        });
+
+                        // Function to display the current page
+                        function displayPage(page) {
+                            tableBody.innerHTML = ''; // Clear table body
+                            const start = (page - 1) * rowsPerPage;
+                            const end = start + rowsPerPage;
+                            const paginatedItems = data.slice(start, end);
+
+                            paginatedItems.forEach(item => {
+                                const tr = document.createElement('tr');
+                                keys.forEach(key => {
+                                    const td = document.createElement('td');
+                                    td.textContent = item[key] !== null ? item[key] : 'N/A';
+                                    tr.appendChild(td);
+                                });
+                                tableBody.appendChild(tr);
+                            });
+
+                            // Handle button disabling
+                            prevPageBtn.disabled = page === 1;
+                            nextPageBtn.disabled = end >= totalRows;
+                        }
+
+                        // Initial display of the first page
+                        displayPage(currentPage);
+
+                        // Show the table and pagination controls
+                        table.style.display = 'table';
+                        pagination.style.display = 'flex';
+
+                        // Handle Next Page button click
+                        nextPageBtn.addEventListener('click', () => {
+                            if (currentPage * rowsPerPage < totalRows) {
+                                currentPage++;
+                                displayPage(currentPage);
+                            }
+                        });
+
+                        // Handle Previous Page button click
+                        prevPageBtn.addEventListener('click', () => {
+                            if (currentPage > 1) {
+                                currentPage--;
+                                displayPage(currentPage);
+                            }
+                        });
+                    } else {
+                        errorDiv.textContent = 'No data available from the API.';
+                    }
+                })
+                .catch(error => {
+                    errorDiv.textContent = error.message;
+                });
+        });
+    </script>
+
+</body>
+</html>
